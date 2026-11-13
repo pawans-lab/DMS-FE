@@ -1,0 +1,21 @@
+// Less used pages, loaded on demand. AppLayout renders the outlet inside <Suspense>.
+import { lazy } from 'react'
+
+export const MfaSetup = lazy(() => import('./account/MfaSetup'))
+export const Profile = lazy(() => import('./account/Profile'))
+export const AdminIndex = lazy(() => import('./admin/AdminIndex'))
+export const Devices = lazy(() => import('./admin/Devices'))
+export const Mailboxes = lazy(() => import('./admin/Mailboxes'))
+export const Metadata = lazy(() => import('./admin/Metadata'))
+export const RoleEdit = lazy(() => import('./admin/RoleEdit'))
+export const Roles = lazy(() => import('./admin/Roles'))
+export const Settings = lazy(() => import('./admin/Settings'))
+export const UserEdit = lazy(() => import('./admin/UserEdit'))
+export const Users = lazy(() => import('./admin/Users'))
+export const EmailDetail = lazy(() => import('./emails/EmailDetail'))
+export const EmailsIndex = lazy(() => import('./emails/EmailsIndex'))
+export const GmailSettings = lazy(() => import('./gmail/GmailSettings'))
+export const Activity = lazy(() => import('./Activity'))
+export const Permissions = lazy(() => import('./Permissions'))
+export const Search = lazy(() => import('./Search'))
+export const Compare = lazy(() => import('./documents/Compare'))

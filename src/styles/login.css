@@ -1,0 +1,188 @@
+/* Themed sign-in page (pages/auth/Login.jsx). Everything is scoped to .login-body / .lx-*
+   so the rest of the app (app.css) is unaffected even after this file has loaded. */
+body.login-body {
+  min-height: 100vh;
+  overflow: hidden; /* page is sized to always fit the viewport — no scrollbars */
+  color: #eef3ff;
+  background:
+    radial-gradient(ellipse at 18% 12%, rgba(48,105,255,.16), transparent 38%),
+    radial-gradient(ellipse at 82% 86%, rgba(24,190,210,.10), transparent 40%),
+    linear-gradient(135deg, #050914 0%, #080f20 52%, #050914 100%);
+}
+
+.lx-canvas {
+  position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;
+  opacity: 0; transition: opacity .9s ease;
+}
+.lx-canvas.is-ready { opacity: 1; }
+
+.lx-ambient {
+  position: fixed; width: 440px; height: 440px; border-radius: 50%;
+  filter: blur(75px); opacity: .18; pointer-events: none; z-index: 0;
+  background: #245bff; left: -170px; bottom: -210px;
+  animation: lxFloatGlow 12s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.lx-ambient.two {
+  width: 380px; height: 380px; left: auto; bottom: auto; right: -150px; top: -180px;
+  background: #16c8d5; animation-delay: -5s;
+}
+@keyframes lxFloatGlow {
+  from { transform: translate3d(0,0,0) scale(.92); }
+  to { transform: translate3d(60px,-35px,0) scale(1.12); }
+}
+
+.lx-page {
+  position: relative; z-index: 1; min-height: 100vh; min-height: 100dvh;
+  display: grid; place-items: center; padding: clamp(12px, 3vh, 32px) 16px;
+}
+.lx-wrap { width: min(100%, 390px); animation: lxRiseIn .8s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes lxRiseIn {
+  from { opacity: 0; transform: translateY(22px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Logo + DMS on one text line, so "DMS" shares the baseline of the "JMBAXi" lettering.
+   Measured from jmbaxi-logo.png (512x182): lettering spans y 79–160, i.e. cap height = 81/182
+   of the image height and 22/182 of empty space below it. The image's negative bottom margin
+   drops that empty space below the baseline; DMS font-size is set so its cap height (≈0.71em
+   for these sans fonts) equals the logo's cap height. */
+.lx-brand {
+  --lh: 64px; /* rendered logo height; everything below scales from it */
+  display: block; margin: 0 auto 24px; padding: 4px 2px;
+  text-align: center; white-space: nowrap; line-height: 1;
+}
+.lx-brand-logo, .lx-brand-name { display: inline; }
+.lx-brand-logo img {
+  display: inline-block; vertical-align: baseline;
+  height: var(--lh); width: auto;
+  margin-bottom: calc(var(--lh) * -22 / 182);
+  filter: drop-shadow(0 0 12px rgba(51, 190, 255, .18));
+}
+.lx-brand-name {
+  margin-left: calc(var(--lh) * 0.12);
+  color: #f2f7ff; font-weight: 800; letter-spacing: 1px;
+  font-size: calc(var(--lh) * 81 / 182 / 0.71);
+  text-shadow: 0 0 18px rgba(83, 160, 255, .24);
+}
+@media (max-width: 380px) {
+  .lx-brand { --lh: 54px; }
+}
+
+.lx-card {
+  position: relative; overflow: hidden; padding: 32px 31px 27px;
+  border: 1px solid rgba(150,180,255,.17); border-radius: 20px;
+  background: linear-gradient(145deg, rgba(16,27,51,.88), rgba(8,15,31,.90));
+  box-shadow: 0 28px 90px rgba(0,0,0,.48), 0 0 45px rgba(42,102,255,.08), inset 0 1px 0 rgba(255,255,255,.07);
+}
+.lx-card::before {
+  content: ""; position: absolute; inset: 0 0 auto; height: 3px;
+  background: linear-gradient(90deg, transparent, #5d91ff, #6dd5dc, transparent); opacity: .9;
+}
+.lx-card h1 { margin: 0 0 7px; font-size: 25px; font-weight: 700; letter-spacing: -.7px; color: #eef3ff; }
+.lx-subtitle { margin: 0 0 25px; color: #9aa9c5; font-size: 13px; line-height: 1.5; }
+
+.lx-error {
+  margin: 0 0 17px; padding: 10px 12px; border-radius: 10px; font-size: 13px;
+  color: #ffc9c9; background: rgba(220, 38, 38, .14); border: 1px solid rgba(248, 113, 113, .35);
+}
+.lx-field { margin: 0 0 17px; }
+.lx-card label { display: block; margin: 0 0 8px; font-size: 12px; font-weight: 650; color: #c4cee2; }
+.lx-input-wrap { position: relative; }
+.lx-card input[type="text"], .lx-card input[type="password"] {
+  width: 100%; height: 48px; border: 1px solid rgba(145,169,220,.22); border-radius: 10px;
+  outline: none; padding: 0 14px; background: rgba(5,11,24,.72); color: #eef3ff;
+  font: inherit; font-size: 14px; transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.lx-card input::placeholder { color: #6b7a96; }
+.lx-card input[type="text"]:focus, .lx-card input[type="password"]:focus {
+  border-color: #6d99fa; background: rgba(9,19,39,.96);
+  box-shadow: 0 0 0 4px rgba(40,100,240,.16), 0 0 22px rgba(40,100,240,.10);
+}
+.lx-card input:-webkit-autofill {
+  -webkit-text-fill-color: #eef3ff; -webkit-box-shadow: 0 0 0 1000px #0a1428 inset; caret-color: #eef3ff;
+}
+.lx-card input.lx-password { padding-right: 48px; }
+.lx-toggle {
+  position: absolute; right: 7px; top: 7px; width: 34px; height: 34px; border: 0; border-radius: 8px;
+  color: #7787a3; background: transparent; cursor: pointer; display: grid; place-items: center; padding: 0;
+}
+.lx-toggle:hover { background: rgba(65,112,220,.14); color: #8db2ff; }
+.lx-toggle svg { width: 18px; height: 18px; }
+
+.lx-hint { margin: -6px 0 14px; font-size: 12px; color: #9aa9c5; }
+.lx-options { display: flex; align-items: center; justify-content: space-between; margin: 2px 0 21px; font-size: 12px; }
+.lx-card label.lx-remember { display: flex; align-items: center; gap: 7px; margin: 0; color: #a6b4ce; font-weight: 400; cursor: pointer; }
+.lx-remember input { width: 14px; height: 14px; margin: 0; accent-color: #2864f0; }
+.lx-card a { color: #82aaff; text-decoration: none; font-weight: 600; }
+.lx-card a:hover { color: #b3ccff; text-decoration: underline; }
+
+.lx-submit {
+  width: 100%; height: 49px; border: 0; border-radius: 10px; color: white;
+  font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  background: linear-gradient(110deg, #3477ff, #2459e8 70%, #1f53dc);
+  box-shadow: 0 9px 18px rgba(40,100,240,.22), inset 0 1px 0 rgba(255,255,255,.28);
+  transition: transform .2s, box-shadow .2s, filter .2s;
+}
+.lx-submit:hover:not(:disabled) { transform: translateY(-2px); filter: saturate(1.08); box-shadow: 0 13px 23px rgba(40,100,240,.29); }
+.lx-submit:active { transform: translateY(0); }
+.lx-submit:disabled { opacity: .7; cursor: progress; }
+.lx-status { min-height: 18px; margin: 12px 0 0; text-align: center; color: #8fb4ff; font-size: 12px; }
+
+.lx-divider { display: flex; align-items: center; gap: 10px; color: #71809d; font-size: 12px; margin: 14px 0; }
+.lx-divider::before, .lx-divider::after { content: ""; flex: 1; border-top: 1px solid rgba(150,180,255,.17); }
+.lx-sso { display: flex; flex-direction: column; gap: 10px; }
+.lx-card a.lx-sso-btn {
+  display: flex; align-items: center; justify-content: center; height: 46px; border-radius: 10px;
+  border: 1px solid rgba(145,169,220,.22); background: rgba(5,11,24,.55); color: #c4d6ff; font-size: 13px;
+}
+.lx-card a.lx-sso-btn:hover { background: rgba(40,100,240,.14); text-decoration: none; }
+
+.lx-signup { margin: 22px 0 0; text-align: center; color: #91a0bc; font-size: 12px; }
+.lx-footer { margin-top: 22px; text-align: center; color: #71809d; font-size: 11px; }
+
+@media (max-width: 480px) {
+  .lx-card { padding: 28px 23px 24px; }
+  .lx-wrap { max-width: 360px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lx-canvas { opacity: 1; transition: none; }
+  .lx-ambient, .lx-wrap, .lx-card * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* ---------- short screens (13–14" laptops, browser chrome, zoom) ----------
+   Shrink vertical spacing so brand + card + footer always fit without scrolling. */
+@media (max-height: 800px) {
+  .lx-brand { --lh: 52px; margin-bottom: 14px; }
+  .lx-card { padding: 22px 26px 18px; }
+  .lx-card h1 { font-size: 22px; margin-bottom: 4px; }
+  .lx-subtitle { margin-bottom: 16px; }
+  .lx-field { margin-bottom: 12px; }
+  .lx-card label { margin-bottom: 6px; }
+  .lx-card input[type="text"], .lx-card input[type="password"] { height: 42px; }
+  .lx-toggle { top: 4px; }
+  .lx-options { margin: 0 0 14px; }
+  .lx-submit { height: 44px; }
+  .lx-status { min-height: 0; margin-top: 8px; }
+  .lx-status:empty { display: none; }
+  .lx-divider { margin: 10px 0; }
+  .lx-sso { gap: 8px; }
+  .lx-card a.lx-sso-btn { height: 40px; }
+  .lx-signup { margin-top: 12px; }
+  .lx-footer { margin-top: 12px; }
+}
+@media (max-height: 660px) {
+  .lx-brand { --lh: 42px; margin-bottom: 10px; padding: 0; }
+  .lx-card { padding: 18px 24px 16px; }
+  .lx-card h1 { font-size: 20px; }
+  .lx-subtitle { margin-bottom: 12px; }
+  .lx-field { margin-bottom: 10px; }
+  .lx-card input[type="text"], .lx-card input[type="password"] { height: 40px; }
+  .lx-toggle { top: 3px; }
+  .lx-submit { height: 42px; }
+  .lx-footer { display: none; }
+}
+/* Truly tiny viewports (e.g. landscape phones): allow scrolling rather than clipping. */
+@media (max-height: 520px) {
+  body.login-body { overflow-y: auto; }
+}
