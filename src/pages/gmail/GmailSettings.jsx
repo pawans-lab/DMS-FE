@@ -72,15 +72,15 @@ export default function GmailSettings() {
                     success={(r) => `${r.queued} failed import(s) queued for retry.`} />
                 )}
                 <ActionButton action={gmailDisconnect} label="Disconnect" className="btn btn-ghost btn-danger-text"
-                  confirm="Disconnect Gmail? New archived emails will no longer be imported. Emails already archived stay in the DMS."
-                  success="Gmail disconnected. Your archived emails remain in the DMS." />
+                  confirm="Disconnect Gmail? New archived emails will no longer be imported. Emails already archived stay in JMBVault."
+                  success="Gmail disconnected. Your archived emails remain in JMBVault." />
               </div>
             </>
           ) : reauth ? (
-            <p className="muted">Archiving resumes after you reconnect. Your archived emails stay in the DMS.</p>
+            <p className="muted">Archiving resumes after you reconnect. Your archived emails stay in JMBVault.</p>
           ) : (
             <>
-              <p>Connect your Gmail once. After that, every email you archive in Gmail is saved to the DMS automatically, even when you are not signed in to the DMS. Only you can see your archived emails.</p>
+              <p>Connect your Gmail once. After that, every email you archive in Gmail is saved to JMBVault automatically, even when you are not signed in to JMBVault. Only you can see your archived emails.</p>
               {s.status === 'disconnected' && s.account && (
                 <p className="muted small"><strong>{s.account}</strong> was disconnected. Emails already archived from it stay in your Email Archive.</p>
               )}
@@ -97,7 +97,7 @@ export default function GmailSettings() {
           </div>
           <ul className="small">
             <li>The server checks your Gmail every {every(s.interval_seconds)} and imports the emails you archived (removed from the Inbox). New emails appear within about {every(s.interval_seconds)}.</li>
-            <li>This runs on the server: you do not need to keep the DMS or Gmail open.</li>
+            <li>This runs on the server: you do not need to keep JMBVault or Gmail open.</li>
             <li>Your archived emails are private. Nobody else, including administrators, can open or search them.</li>
             <li>Connecting a different Gmail address replaces this one. Emails already archived stay in your archive.</li>
             <li>Trashed or spam messages are not imported.</li>

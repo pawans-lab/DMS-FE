@@ -11,7 +11,7 @@ export function useAuth() {
   return useContext(AuthContext)
 }
 
-export const APP_NAME = import.meta.env.VITE_APP_NAME || 'DMS'
+export const APP_NAME = import.meta.env.VITE_APP_NAME || 'JMBVault'
 
 /** Routes reachable without a session; the central error handler never redirects away from them. */
 export const PUBLIC_PATHS = ['/login', '/register', '/setup', '/mfa', '/device-pending', '/blocked']

@@ -120,6 +120,20 @@ location /                      { root /srv/dms-fe/dist; try_files $uri /index.h
 Pass `Host` and `X-Forwarded-*` headers through and set `DMS_TRUSTED_PROXIES`, so that Flask builds
 correct callback URLs.
 
+A complete, security-scanned setup is in [deploy/](deploy/). Install steps are at the top of
+`nginx-dms.conf`.
+
+- `nginx-dms.conf` is the site. It hides the nginx version (`server_tokens off`), raises the upload
+  limit and caches the hashed `/assets/` files.
+- `security-headers.conf` adds the security headers to the app's static files: Content-Security-Policy,
+  X-Frame-Options, X-Content-Type-Options, Referrer-Policy and Permissions-Policy. Flask already sends
+  these on API responses, so the snippet is included only in the static locations. A second CSP added by
+  nginx would be enforced on top of the per-route policies Flask sets for previews and email bodies.
+- `proxy.conf` holds the proxy headers and timeouts for the Flask locations.
+
+Keep the CSP in `security-headers.conf` in line with `DEFAULT_CONTENT_SECURITY_POLICY` in
+`DMS-BE/dms/config.py`.
+
 ## Scripts
 
 | Command | What it does |

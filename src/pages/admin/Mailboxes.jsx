@@ -45,7 +45,7 @@ export default function Mailboxes() {
         <>
           <div className="card card-flush"><div className="table-wrap"><table className="table">
             <thead><tr>
-              <th>Mailbox</th><th>DMS user</th><th>Connected</th><th>Status</th><th className="hide-md">Last sync</th>
+              <th>Mailbox</th><th>JMBVault user</th><th>Connected</th><th>Status</th><th className="hide-md">Last sync</th>
               <th className="num">Archived</th><th className="num hide-sm">Pending</th><th className="num">Failed</th><th className="hide-md">Error</th>
             </tr></thead>
             <tbody>

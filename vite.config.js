@@ -1,6 +1,20 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
 
+// Same security headers as the production web server (deploy/security-headers.conf), used by
+// `npm run preview`. Not used by `npm run dev`: React's hot reload injects an inline script that
+// script-src 'self' would block.
+const securityHeaders = {
+  'Content-Security-Policy':
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
+    "font-src 'self' data:; media-src 'self'; connect-src 'self'; frame-src 'self'; object-src 'none'; " +
+    "base-uri 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'self'",
+  'X-Frame-Options': 'SAMEORIGIN',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'same-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -19,6 +33,10 @@ export default defineConfig(({ mode }) => {
         '/gmail/oauth2callback': proxy, // only the callback: /gmail itself is an SPA page
         '/static': proxy,
       },
+    },
+    // The preview server reuses server.proxy; Flask's own headers replace these on proxied responses.
+    preview: {
+      headers: securityHeaders,
     },
   }
 })

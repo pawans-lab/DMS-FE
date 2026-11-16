@@ -103,7 +103,7 @@ function SettingsForm({ settings, roles }) {
           <div className="field"><label htmlFor="s-role">Default role for new SSO / LDAP users</label>
             <select id="s-role" {...text('sso_default_role')}>{roles.map((r) => <option key={r.id}>{r.name}</option>)}</select></div>
           <div className="field"><label htmlFor="s-groups">Directory group → role mapping</label>
-            <textarea id="s-groups" rows={3} placeholder="DMS-Admins = Admin" {...text('group_role_map')} />
+            <textarea id="s-groups" rows={3} placeholder="JMBVault-Admins = Admin" {...text('group_role_map')} />
             <small className="muted">Groups from LDAP (memberOf), OIDC (groups claim) or SAML (groups attribute). Mapped roles replace the user&apos;s roles at each sign-in.</small></div>
         </section>
 

@@ -42,10 +42,10 @@ body.login-body {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Logo + DMS on one text line, so "DMS" shares the baseline of the "JMBAXi" lettering.
+/* Logo + app name on one text line, so the name shares the baseline of the "JMBAXi" lettering.
    Measured from jmbaxi-logo.png (512x182): lettering spans y 79–160, i.e. cap height = 81/182
    of the image height and 22/182 of empty space below it. The image's negative bottom margin
-   drops that empty space below the baseline; DMS font-size is set so its cap height (≈0.71em
+   drops that empty space below the baseline; the name's font-size is set so its cap height (≈0.71em
    for these sans fonts) equals the logo's cap height. */
 .lx-brand {
   --lh: 64px; /* rendered logo height; everything below scales from it */

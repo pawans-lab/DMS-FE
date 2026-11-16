@@ -79,11 +79,11 @@ export default function Login() {
 
       <main className="lx-page">
         <section className="lx-wrap" aria-label={`${APP_NAME} sign in`}>
-          <div className="lx-brand" aria-label="JMBAXi DMS">
+          <div className="lx-brand" aria-label={APP_NAME}>
             <div className="lx-brand-logo">
               <img src="/jmbaxi-logo-light.png" alt="JMBAXi logo" />
             </div>
-            <div className="lx-brand-name">DMS</div>
+            <div className="lx-brand-name">{APP_NAME}</div>
           </div>
 
           <div className="lx-card">

@@ -193,7 +193,7 @@ export default function EmailDetail() {
               title="Message body" referrerPolicy="no-referrer" />
           )}
           {body.isPending && <p className="muted pad">Loading message…</p>}
-          <p className="small muted pad">For your security, scripts and remote content in emails are blocked in this preview; images the email links to are shown from copies stored in the DMS. Attachments are listed with their details only. The original message is preserved unmodified in the .eml file.</p>
+          <p className="small muted pad">For your security, scripts and remote content in emails are blocked in this preview; images the email links to are shown from copies stored in JMBVault. Attachments are listed with their details only. The original message is preserved unmodified in the .eml file.</p>
         </section>
 
         <aside className="side-col">
