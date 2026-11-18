@@ -13,6 +13,7 @@ import EmailStateBadge from '../../components/EmailStateBadge'
 import { useTitle } from '../../hooks/data'
 import { TYPE_LABELS, dt, extensionOf, filesize, initial } from '../../lib/format'
 import { toast } from '../../lib/toast'
+import EmailShares from './EmailShares'
 
 // The same policy as routes/emails.py BODY_CSP, minus what a srcdoc frame cannot use ('self').
 const BODY_CSP = "default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:; base-uri 'none'; form-action 'none'"
@@ -136,26 +137,36 @@ export default function EmailDetail() {
   const importable = (name) => !!TYPE_LABELS[extensionOf(name)]
   const fileType = (a) => TYPE_LABELS[extensionOf(a.filename)] || (extensionOf(a.filename) || a.content_type.split('/').pop()).toUpperCase()
   const fileMissing = body.isError && body.error?.code === 'not_found'
+  // `access` lists what the signed-in user may do (Permissions Matrix 5). Older responses lack it: owner only.
+  const access = email.access || ['view', 'download', 'share']
+  const canDownload = access.includes('download')
+  const isOwner = email.is_owner ?? access.includes('share')
 
   return (
     <>
       <nav className="breadcrumbs" aria-label="Breadcrumb">
-        <Link to="/emails">Email Archive</Link><span>/</span><span className="current truncate">{subject}</span>
+        {isOwner ? <Link to="/emails">Email Archive</Link> : <Link to="/shared?tab=emails">Emails shared with me</Link>}<span>/</span><span className="current truncate">{subject}</span>
       </nav>
 
       <div className="page-head">
         <div>
           <h1 className="break">{subject}</h1>
-          <p className="muted"><EmailStateBadge state={email.gmail_state} /> · Archived {dt(email.imported_at)}</p>
+          <p className="muted">
+            <EmailStateBadge state={email.gmail_state} /> · Archived {dt(email.imported_at)}
+            {!isOwner && <> · <span className="badge">{canDownload ? 'Shared with you: view & download' : 'Shared with you: view only'}</span></>}
+          </p>
         </div>
         <div className="actions">
-          {!fileMissing && (
+          {isOwner && (
+            <a className="btn btn-ghost" href="#sharing"><Icon name="share" /> Share</a>
+          )}
+          {!fileMissing && canDownload && (
             <a className="btn btn-secondary" href={emlWithImagesUrl(email.id)}
               title="A copy of the email with its images included, so they show in any mail program, even offline. The archived original is not changed.">
               <Icon name="download" /> Download with images (.eml)
             </a>
           )}
-          {!fileMissing && <a className="btn btn-primary" href={emlUrl(email.id)}><Icon name="download" /> Download original (.eml)</a>}
+          {!fileMissing && canDownload && <a className="btn btn-primary" href={emlUrl(email.id)}><Icon name="download" /> Download original (.eml)</a>}
         </div>
       </div>
 
@@ -217,16 +228,21 @@ export default function EmailDetail() {
                   <li key={a.part_index} className="list-row">
                     <span className="list-main"><span className="truncate" title={a.filename}>{a.filename}</span>
                       <small className="muted">{fileType(a)} · {a.content_type} · {filesize(a.size)}</small></span>
-                    {importable(a.filename) && !infected && (
+                    {importable(a.filename) && !infected && canDownload && (
                       <button type="button" className="icon-btn" title="Save to Document Library" aria-label={`Save ${a.filename} to the document library`}
                         onClick={() => setImporting(a)}><Icon name="folder-plus" /></button>
                     )}
                   </li>
                 ))}
               </ul>
-              <p className="small muted">Saving an attachment creates an independent copy in the Document Library. The archived email and its .eml file are not changed.</p>
+              <p className="small muted">
+                {canDownload
+                  ? 'Saving an attachment creates an independent copy in the Document Library. The archived email and its .eml file are not changed.'
+                  : 'You have view-only access to this email: attachments cannot be downloaded or saved to the library.'}
+              </p>
             </section>
           )}
+          {isOwner && <EmailShares emailId={email.id} />}
         </aside>
       </div>
 

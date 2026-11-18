@@ -13,7 +13,8 @@ import RecycleBin from './pages/RecycleBin'
 import Shared from './pages/Shared'
 import Versions from './pages/Versions'
 import {
-  Activity, AdminIndex, Compare, Devices, EmailDetail, EmailsIndex, GmailSettings, Mailboxes, Metadata, MfaSetup, Permissions, Profile, RoleEdit, Roles, Search, Settings, UserEdit, Users,
+  Activity, AdminIndex, Compare, Devices, EmailDetail, EmailsIndex, GmailSettings, LegalHolds, Mailboxes, Metadata, MfaSetup, Ownership, Permissions, Profile,
+  RoleEdit, Roles, Search, Settings, UserEdit, Users,
 } from './pages/lazy'
 import Login from './pages/auth/Login'
 import Message from './pages/auth/Message'
@@ -56,7 +57,7 @@ export const router = createBrowserRouter([
           { path: '/recent', element: <Recent /> },
           { path: '/recycle-bin', element: <RecycleBin /> },
           { path: '/versions', element: <Versions /> },
-          // Personal audit log: every user sees only their own activity.
+          // Audit log: contributors see only their own activity; administrators see everyone's.
           { path: '/activity', element: <Activity /> },
           { path: '/search', element: <Search /> },
           { path: '/documents', element: <DocumentsIndex /> },
@@ -84,6 +85,8 @@ export const router = createBrowserRouter([
           { path: '/admin/metadata', element: cap('admin', <Metadata />) },
           { path: '/admin/devices', element: cap('admin', <Devices />) },
           { path: '/admin/mailboxes', element: cap('admin', <Mailboxes />) },
+          { path: '/admin/ownership', element: cap('admin', <Ownership />) },
+          { path: '/admin/legal-holds', element: cap('admin', <LegalHolds />) },
           { path: '*', element: <ErrorPage status={404} title="Not Found" message="The page you were looking for does not exist." /> },
         ],
       },

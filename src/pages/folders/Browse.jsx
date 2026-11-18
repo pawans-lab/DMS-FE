@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { setLegalHold } from '../../api/admin'
 import { deleteFolder, folderZipUrl, getFolder, rootFolder, setRetention } from '../../api/folders'
 import { useAuth } from '../../auth/authContext'
 import ActionButton from '../../components/ActionButton'
 import DocumentTable from '../../components/DocumentTable'
 import FavouriteButton from '../../components/FavouriteButton'
 import Icon from '../../components/Icon'
+import LegalHoldBadge from '../../components/LegalHoldBadge'
 import Loading, { QueryError } from '../../components/Loading'
 import Modal from '../../components/Modal'
 import { useModals } from '../../components/modals/modalContext'
 import EmptyState from '../../components/EmptyState'
 import { useFolders, useTitle } from '../../hooks/data'
 import { plural } from '../../lib/format'
+import { actionsOf, canDo } from '../../lib/perms'
 import { toast } from '../../lib/toast'
 
 function RetentionModal({ folderId, onClose }) {
@@ -75,7 +78,9 @@ export default function Browse() {
   if (query.isPending) return <Loading />
   if (query.isError) return <QueryError error={query.error} />
 
-  const perms = folder ? folder.permissions : data.permissions || []
+  // The library root has no folder JSON: its `permissions` are the repository permissions.
+  const current = folder || { permissions: data.permissions || [] }
+  const can = actionsOf(current)
   const subfolders = data.folders
   const documents = data.documents
   const links = data.shortcuts
@@ -95,23 +100,24 @@ export default function Browse() {
 
       <div className="page-head">
         <div>
-          <h1 className="break">{title} {folder && <FavouriteButton kind="folder" id={folder.id} />}</h1>
+          <h1 className="break">{title} {folder && <FavouriteButton kind="folder" id={folder.id} />} <LegalHoldBadge item={folder} /></h1>
           <p className="muted">
             {plural(subfolders.length, 'folder')} · {plural(documents.length, 'document')}
             {links.length > 0 && <> · {plural(links.length, 'shortcut')}</>}
+            {folder?.owner && !isSystem && <> · Owner: {folder.is_owner ? 'you' : folder.owner}</>}
           </p>
         </div>
         <div className="actions">
-          {perms.includes('edit') && (
-            <>
-              <button type="button" className="btn btn-primary" onClick={() => open('upload', folderId ? { folderId } : {})}><Icon name="upload" /> Upload Document</button>
-              <button type="button" className="btn btn-secondary" onClick={() => open('folder', folderId ? { folderId } : {})}><Icon name="folder-plus" /> New folder</button>
-            </>
+          {can('folder.upload') && (
+            <button type="button" className="btn btn-primary" onClick={() => open('upload', folderId ? { folderId } : {})}><Icon name="upload" /> Upload Document</button>
           )}
-          {folder && perms.includes('share') && (
+          {can('folder.create_child') && (
+            <button type="button" className="btn btn-secondary" onClick={() => open('folder', folderId ? { folderId } : {})}><Icon name="folder-plus" /> New folder</button>
+          )}
+          {folder && can('item.share') && (
             <Link className="btn btn-secondary" to={`/permissions/folder/${folder.id}`}><Icon name="share" /> Share</Link>
           )}
-          {perms.includes('download') && (
+          {can('item.download') && (
             <a className="btn btn-ghost" href={zipUrl} title="Current version of every document you can download, including subfolders">
               <Icon name="download" /> {folder ? 'Download Folder (ZIP)' : 'Download library (ZIP)'}
             </a>
@@ -119,28 +125,34 @@ export default function Browse() {
           <details className="menu">
             <summary className="btn btn-ghost" aria-label="More actions"><Icon name="more" /> More</summary>
             <div className="menu-list">
-              {perms.includes('download') && <a href={folderZipUrl(folderId, true)}><Icon name="layers" /> Download ZIP with version history</a>}
+              {can('item.download') && <a href={folderZipUrl(folderId, true)}><Icon name="layers" /> Download ZIP with version history</a>}
               {folder ? (
                 <>
-                  {perms.includes('edit') && !isSystem && (
-                    <>
-                      <button type="button" onClick={() => open('rename', { kind: 'folder', id: folder.id, name: folder.name })}><Icon name="edit" /> Rename folder</button>
-                      {perms.includes('delete') && (
-                        <button type="button" onClick={() => open('move', { kind: 'folder', id: folder.id, name: folder.name, current: folder.parent_id ?? '' })}>
-                          <Icon name="move" /> Move folder
-                        </button>
-                      )}
-                    </>
+                  {can('item.rename') && !isSystem && (
+                    <button type="button" onClick={() => open('rename', { kind: 'folder', id: folder.id, name: folder.name })}><Icon name="edit" /> Rename folder</button>
                   )}
-                  {perms.includes('download') && (
+                  {can('item.move') && !isSystem && (
+                    <button type="button" onClick={() => open('move', { kind: 'folder', id: folder.id, name: folder.name, current: folder.parent_id ?? '' })}>
+                      <Icon name="move" /> Move folder
+                    </button>
+                  )}
+                  {can('item.copy') && (
                     <button type="button" onClick={() => open('move', { kind: 'folder', mode: 'copy', id: folder.id, name: folder.name, current: folder.parent_id ?? '' })}>
                       <Icon name="copy" /> Copy folder to…
                     </button>
                   )}
-                  {perms.includes('manage') && <Link to={`/permissions/folder/${folder.id}#advanced`}><Icon name="key" /> Advanced permissions</Link>}
-                  {has('records') && <button type="button" onClick={() => setRetentionOpen(true)}><Icon name="history" /> Version retention</button>}
+                  {can('item.share') && <Link to={`/permissions/folder/${folder.id}#advanced`}><Icon name="key" /> Advanced permissions</Link>}
+                  {has('admin') && !isSystem && (
+                    <ActionButton action={() => setLegalHold('folder', folder.id, !folder.legal_hold)}
+                      label={folder.legal_hold ? 'Release legal hold' : 'Place legal hold'} icon="shield" className=""
+                      confirm={folder.legal_hold
+                        ? `Release the legal hold on “${folder.name}”? It can then be deleted or moved again.`
+                        : `Place “${folder.name}” and everything in it under a legal hold? Nobody can delete, purge or move it until the hold is released.`}
+                      success={folder.legal_hold ? 'Legal hold released.' : 'Legal hold placed.'} />
+                  )}
+                  {has('admin') && <button type="button" onClick={() => setRetentionOpen(true)}><Icon name="history" /> Version retention</button>}
                   <Link to={`/folders/${folder.id}/history`}><Icon name="history" /> Folder history</Link>
-                  {perms.includes('delete') && !isSystem && (
+                  {can('item.delete') && !isSystem && (
                     <ActionButton action={() => deleteFolder(folder.id)} label="Delete folder" icon="trash" className="menu-danger"
                       confirm={`Move the folder “${folder.name}” and everything in it to the recycle bin? It can be restored for a limited time.`}
                       success={`Folder '${folder.name}' and its contents moved to the recycle bin.`}
@@ -179,7 +191,8 @@ export default function Browse() {
                       <small className="muted">{plural(subCount(f.id), 'folder')}</small></span>
                   </Link>
                   <FavouriteButton kind="folder" id={f.id} />
-                  {f.permissions.includes('download') && (
+                  <LegalHoldBadge item={f} />
+                  {canDo(f, 'item.download') && (
                     <a className="icon-btn" href={folderZipUrl(f.id)} title={`Download “${f.name}” as ZIP`} aria-label={`Download ${f.name} as ZIP`}>
                       <Icon name="download" />
                     </a>
@@ -191,12 +204,12 @@ export default function Browse() {
 
           {documents.length || links.length ? (
             <div className="card card-flush">
-              <DocumentTable documents={documents} links={links} hideFolder highlightId={highlightId} linkFolderPerms={perms} />
+              <DocumentTable documents={documents} links={links} hideFolder highlightId={highlightId} linkFolder={current} />
             </div>
           ) : !subfolders.length && (
             <div className="card">
               <EmptyState title="This folder is empty" icon="folder"
-                text={perms.includes('edit') ? 'Use the Upload Document or New folder buttons above.' : 'There is nothing here you can see.'} />
+                text={can('folder.upload') ? 'Use the Upload Document or New folder buttons above.' : 'There is nothing here you can see.'} />
             </div>
           )}
         </div>

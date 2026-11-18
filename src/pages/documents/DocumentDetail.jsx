@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { setLegalHold } from '../../api/admin'
 import { uuid } from '../../api/client'
 import {
   checkout, contentUrl, deleteDocument, getDocument, previewUrl, release, removeLink, renderUrl, restoreVersion,
@@ -10,12 +11,14 @@ import { useAuth } from '../../auth/authContext'
 import ActionButton from '../../components/ActionButton'
 import FavouriteButton from '../../components/FavouriteButton'
 import Icon from '../../components/Icon'
+import LegalHoldBadge from '../../components/LegalHoldBadge'
 import Loading, { QueryError } from '../../components/Loading'
 import MetadataFields, { TagsField } from '../../components/MetadataFields'
 import { useModals } from '../../components/modals/modalContext'
 import FileTypeBadge from '../../components/FileTypeBadge'
 import { useFolders, useMetadataSchema, useTitle } from '../../hooks/data'
 import { checkTags, dt, filesize, typeLabel } from '../../lib/format'
+import { actionsOf, canDo } from '../../lib/perms'
 import { refreshData } from '../../lib/query'
 import { toast } from '../../lib/toast'
 
@@ -139,15 +142,14 @@ export default function DocumentDetail() {
   if (query.isError) return <QueryError error={query.error} />
 
   const { document: doc, breadcrumbs: trail, versions, links, preview } = data
-  const perms = doc.permissions
-  const can = (p) => perms.includes(p)
+  const can = actionsOf(doc)
   const mine = doc.checked_out_by === user?.username
   const locked = !!doc.checked_out_by && !mine
   const current = versions.find((v) => v.current)
   const compareOk = preview.compare_supported && versions.length > 1
   const folder = doc.folder_id ? byId.get(doc.folder_id) : null
   const docInfo = { id: doc.id, name: doc.name, extension: doc.extension, version: doc.version, version_number: doc.version_number }
-  const folderPerms = (fid) => (fid ? byId.get(fid)?.permissions || [] : rootPerms)
+  const folderOf = (fid) => (fid ? byId.get(fid) : { permissions: rootPerms })
   const homeFirst = trail.length > 0 && trail[0].id === homeFolderId
 
   const togglePick = (n) => setPicks((p) => (p.includes(n) ? p.filter((x) => x !== n) : [...p, n]))
@@ -172,7 +174,7 @@ export default function DocumentDetail() {
         <div className="title-row">
           <FileTypeBadge ext={doc.extension} />
           <div>
-            <h1 className="break">{doc.name} {!doc.deleted && <FavouriteButton kind="document" id={doc.id} />}</h1>
+            <h1 className="break">{doc.name} {!doc.deleted && <FavouriteButton kind="document" id={doc.id} />} <LegalHoldBadge item={doc} /></h1>
             <p className="muted">
               {typeLabel(doc.extension)} · {filesize(doc.size)} · Version {doc.version} · Updated {dt(doc.updated_at)}
               {' · '}<a href="#versions" onClick={(e) => { e.preventDefault(); document.getElementById('versions')?.scrollIntoView({ behavior: 'smooth' }) }}>
@@ -185,16 +187,16 @@ export default function DocumentDetail() {
           </div>
         </div>
         <div className="actions">
-          {can('download') && <a className="btn btn-primary" href={contentUrl(doc.id)}><Icon name="download" /> Download</a>}
-          {can('share') && <Link className="btn btn-secondary" to={`/permissions/document/${doc.id}`}><Icon name="share" /> Share</Link>}
-          {can('edit') && mine && (
+          {can('item.download') && <a className="btn btn-primary" href={contentUrl(doc.id)}><Icon name="download" /> Download</a>}
+          {can('item.share') && <Link className="btn btn-secondary" to={`/permissions/document/${doc.id}`}><Icon name="share" /> Share</Link>}
+          {can('item.version.create') && mine && (
             <>
               <button type="button" className="btn btn-secondary" onClick={() => open('newVersion', { doc: docInfo, checkIn: true })}><Icon name="unlock" /> Check in</button>
               <ActionButton action={() => release(doc.id)} label="Discard check-out" className="btn btn-ghost"
                 confirm="Release the check-out without uploading a new version?" success="Check-out released." />
             </>
           )}
-          {can('edit') && !mine && !locked && (
+          {can('item.version.create') && !mine && !locked && (
             <>
               <button type="button" className="btn btn-secondary" onClick={() => open('newVersion', { doc: docInfo })}><Icon name="upload" /> Upload New Version</button>
               <ActionButton action={() => checkout(doc.id)} label="Check out" icon="lock" className="btn btn-ghost"
@@ -202,7 +204,7 @@ export default function DocumentDetail() {
                 success={`'${doc.name}' is checked out to you. Others cannot change it until you check it in.`} />
             </>
           )}
-          {locked && (has('records') || can('manage')) && (
+          {locked && (has('records') || can('item.share')) && (
             <ActionButton action={() => release(doc.id)} label="Override check-out" className="btn btn-ghost btn-danger-text"
               confirm={`Release the check-out held by ${doc.checked_out_by}? Their unsaved changes will not be uploaded.`}
               success="Check-out released." />
@@ -211,17 +213,15 @@ export default function DocumentDetail() {
             <summary className="btn btn-ghost" aria-label="More actions"><Icon name="more" /> More</summary>
             <div className="menu-list">
               {compareOk && <Link to={`/documents/${doc.id}/compare`}><Icon name="compare" /> Compare versions</Link>}
-              {can('edit') && !locked && (
-                <>
-                  <button type="button" onClick={() => open('rename', { kind: 'document', id: doc.id, name: doc.name })}><Icon name="edit" /> Rename</button>
-                  {can('delete') && (
-                    <button type="button" onClick={() => open('move', { kind: 'document', id: doc.id, name: doc.name, current: doc.folder_id ?? '' })}>
-                      <Icon name="move" /> Move
-                    </button>
-                  )}
-                </>
+              {can('item.rename') && !locked && (
+                <button type="button" onClick={() => open('rename', { kind: 'document', id: doc.id, name: doc.name })}><Icon name="edit" /> Rename</button>
               )}
-              {can('download') && (
+              {can('item.move') && !locked && (
+                <button type="button" onClick={() => open('move', { kind: 'document', id: doc.id, name: doc.name, current: doc.folder_id ?? '' })}>
+                  <Icon name="move" /> Move
+                </button>
+              )}
+              {can('item.copy') && (
                 <button type="button" onClick={() => open('move', { kind: 'document', mode: 'copy', id: doc.id, name: doc.name, current: doc.folder_id ?? '' })}>
                   <Icon name="copy" /> Copy to…
                 </button>
@@ -229,8 +229,16 @@ export default function DocumentDetail() {
               <button type="button" onClick={() => open('move', { kind: 'document', mode: 'link', id: doc.id, name: doc.name, current: doc.folder_id ?? '' })}>
                 <Icon name="shortcut" /> Add shortcut in another folder
               </button>
-              {can('manage') && <Link to={`/permissions/document/${doc.id}#advanced`}><Icon name="key" /> Advanced permissions</Link>}
-              {can('delete') && !locked && (
+              {can('item.share') && <Link to={`/permissions/document/${doc.id}#advanced`}><Icon name="key" /> Advanced permissions</Link>}
+              {has('admin') && !doc.deleted && (
+                <ActionButton action={() => setLegalHold('document', doc.id, !doc.legal_hold)}
+                  label={doc.legal_hold ? 'Release legal hold' : 'Place legal hold'} icon="shield" className=""
+                  confirm={doc.legal_hold
+                    ? `Release the legal hold on “${doc.name}”? It can then be deleted or moved again.`
+                    : `Place “${doc.name}” under a legal hold? Nobody can delete, purge or move it until the hold is released.`}
+                  success={doc.legal_hold ? 'Legal hold released.' : 'Legal hold placed.'} />
+              )}
+              {can('item.delete') && !locked && (
                 <ActionButton action={() => deleteDocument(doc.id)} label="Delete" icon="trash" className="menu-danger"
                   confirm={`Move “${doc.name}” to the recycle bin? You can restore it later.`}
                   success={`'${doc.name}' moved to the recycle bin.`} onSuccess={() => navigate('/documents')} />
@@ -243,7 +251,7 @@ export default function DocumentDetail() {
       <div className="detail-grid">
         <section className="card card-flush preview-card">
           <div className="card-head pad"><h2>Preview</h2></div>
-          <Preview doc={doc} preview={preview} canDownload={can('download')} />
+          <Preview doc={doc} preview={preview} canDownload={can('item.download')} />
         </section>
 
         <aside className="side-col">
@@ -251,7 +259,9 @@ export default function DocumentDetail() {
             <h2>Details</h2>
             <dl className="meta">
               <dt>Location</dt><dd>{doc.folder_id ? <Link to={`/folders/${doc.folder_id}`}>{folder?.path || trail.map((c) => c.name).join(' / ')}</Link> : 'Root'}</dd>
+              <dt>Owner</dt><dd>{doc.owner ? (doc.is_owner ? `${doc.owner} (you)` : doc.owner) : '—'}</dd>
               <dt>Author</dt><dd>{doc.author || '—'}</dd>
+              {doc.legal_hold && <><dt>Legal hold</dt><dd>Yes — cannot be deleted, purged or moved</dd></>}
               <dt>Type</dt><dd>{typeLabel(doc.extension)} (.{doc.extension})</dd>
               <dt>Size</dt><dd>{filesize(doc.size)}</dd>
               <dt>Created</dt><dd>{dt(doc.created_at)}</dd>
@@ -263,7 +273,7 @@ export default function DocumentDetail() {
 
           <section className="card" id="properties">
             <div className="card-head"><h2>Properties</h2></div>
-            <Properties key={`${doc.id}-${doc.updated_at}`} doc={doc} editable={can('edit') && !doc.deleted && !locked} />
+            <Properties key={`${doc.id}-${doc.updated_at}`} doc={doc} editable={can('item.metadata.edit') && !doc.deleted && !locked} />
           </section>
 
           {links.length > 0 && (
@@ -274,7 +284,7 @@ export default function DocumentDetail() {
                 {links.map((l) => (
                   <li key={l.id} className="list-row">
                     <span className="list-main">{l.folder_id ? <Link to={`/folders/${l.folder_id}`}>{l.folder_path}</Link> : 'Root'}</span>
-                    {folderPerms(l.folder_id).includes('edit') && (
+                    {canDo(folderOf(l.folder_id), 'folder.upload') && (
                       <ActionButton action={() => removeLink(l.id)} className="icon-btn" icon="trash" title="Remove shortcut" success="Shortcut removed." />
                     )}
                   </li>
@@ -304,16 +314,16 @@ export default function DocumentDetail() {
                     <div className="small muted">{filesize(v.size)}{v.created_by && ` · ${v.created_by}`}</div>
                     {v.note && <div className="small">{v.note}</div>}
                     <div className="v-actions">
-                      {can('download') && (
+                      {can('item.download') && (
                         <a className="btn btn-ghost btn-xs" href={contentUrl(doc.id, v.number)}><Icon name="download" /> Download v{v.label}</a>
                       )}
-                      {!doc.deleted && current && !isCurrent && can('edit') && !locked && (
+                      {!doc.deleted && current && !isCurrent && can('item.version.restore') && !locked && (
                         <ActionButton action={() => restoreVersion(doc.id, v.number, uuid(), doc.version_number)} label="Restore this version" icon="restore"
                           className="btn btn-ghost btn-xs"
                           confirm={`Restore version ${v.label}? Its content becomes a new current version; existing versions are kept.`}
                           success={(r) => (r.created ? `Restored ${v.label} as new version ${r.version}.` : 'Already restored.')} />
                       )}
-                      {can('manage') && (
+                      {can('item.share') && (
                         <Link className="btn btn-ghost btn-xs" to={`/permissions/version/${doc.id}/${v.number}`}><Icon name="key" /> Access</Link>
                       )}
                     </div>

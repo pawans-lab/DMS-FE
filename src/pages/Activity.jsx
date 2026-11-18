@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
-import { activity } from '../api/admin'
+import { activity, listUsers } from '../api/admin'
+import { useAuth } from '../auth/authContext'
 import Loading, { QueryError } from '../components/Loading'
 import EmptyState from '../components/EmptyState'
 import Pagination from '../components/Pagination'
@@ -9,7 +10,18 @@ import { useTitle } from '../hooks/data'
 import { dt } from '../lib/format'
 
 const PER_PAGE = 50
-const FILTERS = ['q', 'category', 'date_from', 'date_to']
+const FILTERS = ['q', 'category', 'date_from', 'date_to', 'user_id']
+
+/** Readable names for audit actions added with the Permissions Matrix v2. */
+const ACTION_LABELS = {
+  override: 'admin override',
+  ownership_reassigned: 'ownership reassigned',
+  legal_hold_set: 'legal hold placed',
+  legal_hold_released: 'legal hold released',
+  user_deactivated: 'user deactivated',
+  user_reactivated: 'user reactivated',
+  disconnected_by_admin: 'disconnected by admin',
+}
 
 function show(value) {
   if (value === null || value === undefined || value === '') return '—'
@@ -34,12 +46,19 @@ function Changes({ changes }) {
   )
 }
 
-/** activity.html → GET /api/v1/activity: the signed-in user's own audit trail (the server only returns their entries). */
+/**
+ * activity.html → GET /api/v1/activity. Contributors get their own audit trail only; administrators get
+ * everyone's entries and can narrow them to one user (user_id).
+ */
 export default function Activity() {
-  useTitle('My Activity Log')
+  const { has } = useAuth()
+  const isAdmin = has('admin')
+  useTitle(isAdmin ? 'Audit Log' : 'My Activity Log')
   const [params, setParams] = useSearchParams()
   const page = Math.max(1, Number(params.get('page')) || 1)
   const filters = Object.fromEntries(FILTERS.map((k) => [k, (params.get(k) || '').trim()]))
+  if (!isAdmin) filters.user_id = ''
+  const users = useQuery({ queryKey: ['admin-users', ''], queryFn: () => listUsers(''), enabled: isAdmin, meta: { silent: true } })
   const [form, setForm] = useState(filters)
   const query = useQuery({
     queryKey: ['activity', page, PER_PAGE, filters],
@@ -60,7 +79,14 @@ export default function Activity() {
 
   return (
     <>
-      <div className="page-head"><div><h1>My Activity Log</h1><p className="muted">Everything you did and when: documents, folders, sharing, sign-ins and your email archive. Only your own activity is shown. Entries cannot be changed or deleted.</p></div></div>
+      <div className="page-head"><div>
+        <h1>{isAdmin ? 'Audit Log' : 'My Activity Log'}</h1>
+        <p className="muted">
+          {isAdmin
+            ? "Everyone's activity: documents, folders, sharing, sign-ins, administration and overrides. Filter by user to see one person's trail. Entries cannot be changed or deleted."
+            : 'Everything you did and when: documents, folders, sharing, sign-ins and your email archive. Only your own activity is shown. Entries cannot be changed or deleted.'}
+        </p>
+      </div></div>
       <form className="filters card" onSubmit={submit}>
         <div className="field grow"><label htmlFor="aq">Search</label>
           <input type="search" id="aq" {...field('q')} placeholder="Text or item name" /></div>
@@ -69,6 +95,13 @@ export default function Activity() {
             <option value="">All</option>
             {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select></div>
+        {isAdmin && (
+          <div className="field"><label htmlFor="auser">User</label>
+            <select id="auser" {...field('user_id')}>
+              <option value="">Everyone</option>
+              {(users.data || []).map((u) => <option key={u.id} value={u.id}>{u.display_name || u.username} · {u.username}</option>)}
+            </select></div>
+        )}
         <div className="field"><label htmlFor="afrom">From</label><input type="date" id="afrom" {...field('date_from')} /></div>
         <div className="field"><label htmlFor="ato">To</label><input type="date" id="ato" {...field('date_to')} /></div>
         <div className="field field-actions"><button className="btn btn-secondary" type="submit">Filter</button></div>
@@ -78,12 +111,16 @@ export default function Activity() {
           <div className="card">
             <ul className="timeline">
               {events.map((a) => {
-                const isDoc = (a.entity_type || a.category) === 'document'
+                const type = a.entity_type || a.category
                 let text = a.message
-                if (a.entity_id && isDoc && a.action !== 'purged') text = <Link to={`/documents/${a.entity_id}`}>{a.message}</Link>
+                if (a.entity_id && a.action !== 'purged') {
+                  if (type === 'document') text = <Link to={`/documents/${a.entity_id}`}>{a.message}</Link>
+                  else if (type === 'folder') text = <Link to={`/folders/${a.entity_id}`}>{a.message}</Link>
+                }
+                const who = a.user_name || a.username
                 return (
                   <li key={a.id}><span className={`tl-dot tl-${a.category}`} />
-                    <span className="tl-text">{text} <small className="muted">· {a.category} · {a.action}{a.ip ? ` · ${a.ip}` : ''}</small>
+                    <span className="tl-text">{text} <small className="muted">· {isAdmin && who ? `${who}${a.username && a.username !== who ? ` (${a.username})` : ''} · ` : ''}{a.category} · {ACTION_LABELS[a.action] || a.action}{a.status && a.status !== 'success' ? ` · ${a.status}` : ''}{a.ip ? ` · ${a.ip}` : ''}</small>
                       <Changes changes={a.details?.changes} /></span>
                     <small className="muted nowrap">{dt(a.created_at)}</small></li>
                 )

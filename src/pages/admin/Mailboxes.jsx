@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
-import { gmailAccounts } from '../../api/admin'
+import { disconnectGmailAccount, gmailAccounts } from '../../api/admin'
 import { gmailRetry } from '../../api/gmail'
 import ActionButton from '../../components/ActionButton'
 import AdminNav from '../../components/AdminNav'
@@ -33,7 +33,7 @@ export default function Mailboxes() {
     <>
       <div className="page-head">
         <div><h1>Mailboxes</h1>
-          <p className="muted">Gmail mailboxes users have connected for email archiving, and their sync health. Archived emails are private to each user and cannot be opened here.</p></div>
+          <p className="muted">Gmail mailboxes users have connected for email archiving, and their sync health. Archived emails are private to each user and cannot be opened here. Disconnecting a mailbox revokes its Google access without opening any email.</p></div>
         <div className="actions">
           <ActionButton action={gmailRetry} label="Retry failed" icon="refresh" className={`btn ${anyFailed ? 'btn-primary' : 'btn-secondary'}`}
             title="Queue every mailbox's failed imports for another attempt"
@@ -47,6 +47,7 @@ export default function Mailboxes() {
             <thead><tr>
               <th>Mailbox</th><th>JMBVault user</th><th>Connected</th><th>Status</th><th className="hide-md">Last sync</th>
               <th className="num">Archived</th><th className="num hide-sm">Pending</th><th className="num">Failed</th><th className="hide-md">Error</th>
+              <th className="actions-col"><span className="sr-only">Actions</span></th>
             </tr></thead>
             <tbody>
               {accounts.length ? accounts.map((a) => (
@@ -60,8 +61,16 @@ export default function Mailboxes() {
                   <td className="num hide-sm">{a.pending}</td>
                   <td className="num">{a.failed > 0 ? <span className="badge badge-danger">{a.failed}</span> : a.failed}</td>
                   <td className="hide-md small break">{a.error || ''}</td>
+                  <td className="actions-col">
+                    {a.connected && (
+                      <ActionButton action={() => disconnectGmailAccount(a.id)} label="Disconnect" icon="link"
+                        className="btn btn-ghost btn-sm btn-danger-text" title={`Disconnect ${a.email}`}
+                        confirm={`Disconnect the mailbox ${a.email}${a.username ? ` of ${a.username}` : ''}? Its Google access is revoked and archiving stops. Emails already archived stay private to the user.`}
+                        success={(r) => (r.disconnected === false ? `${a.email} was already disconnected.` : `${a.email} disconnected.`)} />
+                    )}
+                  </td>
                 </tr>
-              )) : <tr><td colSpan={9} className="muted">No mailboxes have been connected yet.</td></tr>}
+              )) : <tr><td colSpan={10} className="muted">No mailboxes have been connected yet.</td></tr>}
             </tbody>
           </table></div></div>
           <Pagination page={page} pages={pages} />

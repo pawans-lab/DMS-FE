@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createUser, getUser, listRoles, updateUser } from '../../api/admin'
 import ActionButton from '../../components/ActionButton'
 import AdminNav from '../../components/AdminNav'
+import Icon from '../../components/Icon'
 import Loading, { QueryError } from '../../components/Loading'
 import { useTitle } from '../../hooks/data'
 import { dt } from '../../lib/format'
@@ -58,7 +59,14 @@ function UserForm({ user, roles }) {
             <label key={r.id} className="check"><input type="checkbox" checked={form.roles.includes(r.id)} onChange={() => toggleRole(r.id)} /> {r.name} <small className="muted">{r.description}</small></label>
           ))}
         </fieldset>
-        {user && <label className="check"><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /> Account active</label>}
+        {user && (
+          <>
+            <label className="check"><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /> Account active</label>
+            {user.is_active && !form.is_active && (
+              <p className="small muted">Deactivating signs the user out everywhere, revokes their API tokens and removes everything shared with them. Items they own keep their owner; <Link to={`/admin/ownership?from=${user.id}`}>reassign their items</Link> if someone else should take them over.</p>
+            )}
+          </>
+        )}
         {mutation.error && <p className="form-error" role="alert">{mutation.error.message}</p>}
         <div className="modal-actions">
           <Link className="btn btn-ghost" to="/admin/users">Cancel</Link>
@@ -109,6 +117,9 @@ export default function UserEdit() {
               )) : <li className="muted">No devices.</li>}
             </ul>
             <Link className="link-sm" to="/admin/devices">Manage devices</Link>
+            <h2>Ownership</h2>
+            <p className="small muted">Hand over every folder and document this user owns to another user (for example when they leave).</p>
+            <Link className="btn btn-secondary btn-sm" to={`/admin/ownership?from=${user.id}`}><Icon name="users" /> Reassign their items</Link>
           </section>
         )}
       </div>

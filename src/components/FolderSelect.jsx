@@ -1,16 +1,17 @@
 import { useEffect, useMemo } from 'react'
 import { useAuth } from '../auth/authContext'
 import { useFolders } from '../hooks/data'
+import { canDo } from '../lib/perms'
 
 /**
- * Port of fillFolderSelect() in app.js. With `needEdit`, folders without edit permission are disabled
- * and "Root" is offered only when the user may edit the repository root. `exclude` is a Set of ids
+ * Port of fillFolderSelect() in app.js. With `needEdit`, folders the user cannot add to (folder.upload) are
+ * disabled and "Root" is offered only when the user may add to the repository root. `exclude` is a Set of ids
  * (a folder and its descendants when moving a folder). An unusable value falls back to the first usable option.
  */
 export default function FolderSelect({ id, value, onChange, needEdit = false, exclude, required }) {
   const { tree, isFetched } = useFolders()
   const { rootPerms } = useAuth()
-  const showRoot = !needEdit || rootPerms.includes('edit')
+  const showRoot = !needEdit || canDo({ permissions: rootPerms }, 'folder.upload')
 
   const options = useMemo(() => tree
     .filter(({ folder }) => !(exclude && exclude.has(String(folder.id))))
@@ -18,7 +19,7 @@ export default function FolderSelect({ id, value, onChange, needEdit = false, ex
       value: String(folder.id),
       label: '   '.repeat(depth + 1) + folder.name,
       title: folder.path,
-      disabled: needEdit && !folder.permissions.includes('edit'),
+      disabled: needEdit && !canDo(folder, 'folder.upload'),
     })), [tree, exclude, needEdit])
 
   const current = value == null ? '' : String(value)

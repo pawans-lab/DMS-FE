@@ -35,6 +35,8 @@ export const restoreVersion = (id, number, idempotencyKey, baseVersion) =>
   api(`/documents/${id}/versions/${number}/restore`, {
     method: 'POST', body: { idempotency_key: idempotencyKey, base_version: baseVersion ?? '' },
   })
+/** Short-lived signed download URL: { url, expires_in }. */
+export const downloadLink = (id, version) => api(`/documents/${id}/download-link`, { query: { version } })
 export const textPreview = (id) => apiText(`/documents/${id}/preview`)
 
 export const contentUrl = (id, version) => apiUrl(`/documents/${id}/content`, version ? { version } : undefined)

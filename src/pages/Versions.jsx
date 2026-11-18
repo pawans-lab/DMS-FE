@@ -8,6 +8,7 @@ import FileTypeBadge from '../components/FileTypeBadge'
 import Pagination from '../components/Pagination'
 import { useAllDocuments, useTitle } from '../hooks/data'
 import { dt, extensionOf, filesize, plural } from '../lib/format'
+import { canDo } from '../lib/perms'
 
 const PER_PAGE = 40
 
@@ -48,7 +49,7 @@ export default function Versions() {
                         <td className="hide-md muted">{v.note || (v.number === 1 ? 'Initial upload' : '')}{v.created_by && ` · ${v.created_by}`}</td>
                         <td className="hide-sm muted nowrap">{dt(v.created_at)}</td>
                         <td className="actions-col">
-                          {(!d || d.permissions.includes('download')) && (
+                          {(!d || canDo(d, 'item.download')) && (
                             <a className="icon-btn" href={contentUrl(v.document_id, v.number)} title={`Download v${v.label}`} aria-label={`Download v${v.label}`}><Icon name="download" /></a>
                           )}
                         </td>

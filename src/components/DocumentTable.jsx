@@ -5,9 +5,11 @@ import { contentUrl, deleteDocument, getDocument, removeLink } from '../api/docu
 import { useAuth } from '../auth/authContext'
 import { useFolders } from '../hooks/data'
 import { dt, filesize, typeLabel } from '../lib/format'
+import { actionsOf, canDo } from '../lib/perms'
 import ActionButton from './ActionButton'
 import FavouriteButton from './FavouriteButton'
 import Icon from './Icon'
+import LegalHoldBadge from './LegalHoldBadge'
 import { useModals } from './modals/modalContext'
 import FileTypeBadge from './FileTypeBadge'
 import SortHeader from './SortHeader'
@@ -26,7 +28,7 @@ function VersionList({ doc }) {
   if (query.isPending) return <p className="small muted">Loading versions…</p>
   if (query.isError) return <p className="small form-error">Could not load the versions: {query.error.message}</p>
   const { versions, document: latest } = query.data
-  const canDownload = latest.permissions.includes('download')
+  const canDownload = canDo(latest, 'item.download')
   return (
     <div className="version-panel">
       <ol className="versions compact">
@@ -52,11 +54,11 @@ function VersionList({ doc }) {
 }
 
 /**
- * documents/_table.html. `links` are shortcuts ({link_id, document}); `linkFolderPerms` are the
- * permissions on the folder they sit in (removing one needs edit there).
+ * documents/_table.html. `links` are shortcuts ({link_id, document}); `linkFolder` is the folder they sit
+ * in (a folder JSON, or `{ permissions }` for the library root): removing one needs folder.upload there.
  */
 export default function DocumentTable({
-  documents = [], links = [], sortable = false, sort, direction, hideFolder = false, highlightId, linkFolderPerms = [],
+  documents = [], links = [], sortable = false, sort, direction, hideFolder = false, highlightId, linkFolder = null,
 }) {
   const { user } = useAuth()
   const { byId } = useFolders()
@@ -91,7 +93,7 @@ export default function DocumentTable({
         </thead>
         <tbody>
           {documents.map((d) => {
-            const can = (p) => d.permissions.includes(p)
+            const can = actionsOf(d)
             const locked = d.checked_out_by && d.checked_out_by !== user?.username
             const folder = folderOf(d)
             const hasHistory = (d.version_number || 1) > 1
@@ -104,6 +106,7 @@ export default function DocumentTable({
                     <FileTypeBadge ext={d.extension} /><span className="truncate">{d.name}</span>
                     {d.checked_out_by && <span className="muted" title={`Checked out by ${d.checked_out_by}`}><Icon name="lock" /></span>}
                   </Link>
+                  <LegalHoldBadge item={d} />
                 </td>
                 <td className="hide-md muted">{typeLabel(d.extension)}</td>
                 <td className="num muted nowrap">{filesize(d.size)}</td>
@@ -127,22 +130,26 @@ export default function DocumentTable({
                 <td className="actions-col">
                   <div className="row-actions">
                     {!d.deleted && <FavouriteButton kind="document" id={d.id} />}
-                    {can('download') && (
+                    {can('item.download') && (
                       <a className="icon-btn" href={contentUrl(d.id)} title="Download document" aria-label="Download document"><Icon name="download" /></a>
                     )}
-                    {can('share') && (
+                    {can('item.share') && (
                       <Link className="icon-btn" to={`/permissions/document/${d.id}`} title="Share" aria-label="Share"><Icon name="share" /></Link>
                     )}
                     <Link className="icon-btn" to={`/documents/${d.id}#versions`} title="Version history" aria-label="Version history"><Icon name="history" /></Link>
-                    {can('edit') && !locked && (
+                    {!locked && (
                       <>
-                        <button type="button" className="icon-btn" title="Upload new version" aria-label="Upload new version"
-                          onClick={() => open('newVersion', { doc: { id: d.id, name: d.name, extension: d.extension, version: d.version, version_number: d.version_number } })}>
-                          <Icon name="upload" />
-                        </button>
-                        <button type="button" className="icon-btn" title="Rename" aria-label="Rename"
-                          onClick={() => open('rename', { kind: 'document', id: d.id, name: d.name })}><Icon name="edit" /></button>
-                        {can('delete') && (
+                        {can('item.version.create') && (
+                          <button type="button" className="icon-btn" title="Upload new version" aria-label="Upload new version"
+                            onClick={() => open('newVersion', { doc: { id: d.id, name: d.name, extension: d.extension, version: d.version, version_number: d.version_number } })}>
+                            <Icon name="upload" />
+                          </button>
+                        )}
+                        {can('item.rename') && (
+                          <button type="button" className="icon-btn" title="Rename" aria-label="Rename"
+                            onClick={() => open('rename', { kind: 'document', id: d.id, name: d.name })}><Icon name="edit" /></button>
+                        )}
+                        {can('item.move') && (
                           <button type="button" className="icon-btn" title="Move" aria-label="Move"
                             onClick={() => open('move', { kind: 'document', id: d.id, name: d.name, current: d.folder_id ?? '' })}>
                             <Icon name="move" />
@@ -150,7 +157,7 @@ export default function DocumentTable({
                         )}
                       </>
                     )}
-                    {can('delete') && !locked && (
+                    {can('item.delete') && !locked && (
                       <ActionButton action={() => deleteDocument(d.id)} className="icon-btn" icon="trash" title="Move to recycle bin"
                         confirm={`Move “${d.name}” to the recycle bin?`} success={`'${d.name}' moved to the recycle bin.`} />
                     )}
@@ -181,10 +188,10 @@ export default function DocumentTable({
               <td><span className="badge">v{d.version || '1.0'}</span></td>
               <td className="actions-col">
                 <div className="row-actions">
-                  {d.permissions.includes('download') && (
+                  {canDo(d, 'item.download') && (
                     <a className="icon-btn" href={contentUrl(d.id)} title="Download document" aria-label="Download document"><Icon name="download" /></a>
                   )}
-                  {linkFolderPerms.includes('edit') && (
+                  {canDo(linkFolder, 'folder.upload') && (
                     <ActionButton action={() => removeLink(linkId)} className="icon-btn" icon="trash" title="Remove shortcut"
                       success="Shortcut removed." />
                   )}

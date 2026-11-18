@@ -58,11 +58,12 @@ export default function EmailsIndex() {
             {connected ? (
               <>Emails you archive in <strong>{s.account}</strong> are saved here automatically within about {every(s.interval_seconds)}.{' '}
                 <span className="nowrap">Last sync {s.last_sync_at ? dt(s.last_sync_at) : 'pending'}.</span></>
-            ) : 'Your archived Gmail messages. Only you can see them.'}
+            ) : 'Your archived Gmail messages. Only you, and the people you share an email with, can see them.'}
           </p>
         </div>
         <div className="actions">
           {connected && !reauth && <GmailSyncButton disabled={s.sync_in_progress} />}
+          <Link className="btn btn-ghost" to="/shared?tab=emails"><Icon name="share" /> Shared with me</Link>
           <Link className="btn btn-ghost" to="/gmail"><Icon name="link" /> Gmail connection</Link>
         </div>
       </div>

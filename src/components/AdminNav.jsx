@@ -14,6 +14,9 @@ export default function AdminNav() {
       {tab('/admin/settings', 'Settings', pathname === '/admin/settings')}
       {tab('/admin/devices', 'Devices', pathname === '/admin/devices')}
       {tab('/admin/mailboxes', 'Mailboxes', pathname === '/admin/mailboxes')}
+      {tab('/admin/ownership', 'Ownership', pathname === '/admin/ownership')}
+      {tab('/admin/legal-holds', 'Legal holds', pathname === '/admin/legal-holds')}
+      {tab('/activity', 'Audit log', false)}
     </nav>
   )
 }

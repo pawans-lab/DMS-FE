@@ -70,7 +70,7 @@ export const PERM_LABELS = {
 export const PERM_HELP = {
   view: 'See the item, its details and in-browser preview',
   download: 'Download original files and ZIP exports',
-  edit: 'Upload, create subfolders, new versions, rename, move, check out, edit metadata',
+  edit: 'Upload, create subfolders, new versions, check out, edit tags and metadata (rename, move and delete stay with the owner)',
   delete: 'Move to the recycle bin',
   share: 'Give other users or roles view, download or edit access',
   manage: 'Change permissions and inheritance (implies all of the above)',
@@ -88,35 +88,38 @@ export const ROLE_CAPS = {
   Auditor: ['audit'],
 }
 
+/**
+ * The three share levels of the Permissions Matrix (services/access.py SHARE_LEVELS), lowest first.
+ * Rename, move, delete, restore version and resharing are never shared: they stay with the owner and Admin.
+ */
 export const SHARE_LEVELS = {
   view: ['Can view', ['view']],
   download: ['Can view & download', ['view', 'download']],
   edit: ['Can edit', ['view', 'download', 'edit']],
-  full: ['Full control', ['manage']],
 }
-
-function normalize(perms) {
-  const set = new Set(perms.filter((p) => PERMS.includes(p)))
-  if (set.has('manage')) return new Set(PERMS)
-  if (set.size) set.add('view')
-  return set
+/** Labels for every level an existing grant may report, including older ones (access.py LEGACY_LEVELS). */
+export const SHARE_LEVEL_LABELS = {
+  view: 'Can view', download: 'Can view & download', edit: 'Can edit', upload: 'Can add files (legacy)',
 }
+/** Label of a share level key; unknown or empty levels read "Custom". */
+export const shareLevelLabel = (level) => SHARE_LEVEL_LABELS[level] || 'Custom'
 
-/** services/access.py level_of: the Share-dialog level that best describes a permission set. */
+/** services/access.py level_of: the share level that describes what a grant gives a non-owner. */
 export function levelOf(perms) {
-  const have = normalize(perms)
-  for (const key of ['full', 'edit', 'download', 'view']) {
-    if ([...normalize(SHARE_LEVELS[key][1])].every((p) => have.has(p))) return key
-  }
-  return null
+  const set = new Set(perms || [])
+  if (set.has('edit') || set.has('manage')) return 'edit'
+  if (set.has('upload')) return 'upload'
+  if (set.has('download')) return 'download'
+  return set.has('view') ? 'view' : null
 }
 
-/** Levels the actor may give (routes/access.py manage). */
-export function shareLevelsFor(myPerms) {
-  const canManage = myPerms.includes('manage')
-  return Object.entries(SHARE_LEVELS)
-    .filter(([key, [, perms]]) => canManage || (key !== 'full' && perms.every((p) => myPerms.includes(p))))
-    .map(([key, [label]]) => [key, label])
+/**
+ * Levels offered in the Share dialog as [key, label]: GET /directory share_levels when loaded,
+ * otherwise the built-in three. Only view, download and edit are ever offered.
+ */
+export function shareLevelOptions(fromDirectory) {
+  const list = fromDirectory?.length ? fromDirectory.map((l) => [l.key, l.label]) : Object.entries(SHARE_LEVELS).map(([k, [l]]) => [k, l])
+  return list.filter(([key]) => key in SHARE_LEVELS)
 }
 
 /** GET /gmail/status status.status (and the admin mailbox list) → [label, badge class]. */
