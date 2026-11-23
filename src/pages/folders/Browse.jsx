@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { setLegalHold } from '../../api/admin'
 import { deleteFolder, folderZipUrl, getFolder, rootFolder, setRetention } from '../../api/folders'
+import { folderValidity } from '../../api/validity'
 import { useAuth } from '../../auth/authContext'
 import ActionButton from '../../components/ActionButton'
 import DocumentTable from '../../components/DocumentTable'
@@ -13,6 +14,7 @@ import Loading, { QueryError } from '../../components/Loading'
 import Modal from '../../components/Modal'
 import { useModals } from '../../components/modals/modalContext'
 import EmptyState from '../../components/EmptyState'
+import FolderValidityModal from '../../components/validity/FolderValidityModal'
 import { useFolders, useTitle } from '../../hooks/data'
 import { plural } from '../../lib/format'
 import { actionsOf, canDo } from '../../lib/perms'
@@ -55,6 +57,11 @@ export default function Browse() {
   const { open, setCurrentFolder } = useModals()
   const { tree, folders: allFolders } = useFolders()
   const [retentionOpen, setRetentionOpen] = useState(false)
+  const [validityOpen, setValidityOpen] = useState(false)
+  // 404 when the user may not see the folder as an ordinary user (e.g. an administrator's override access).
+  const validity = useQuery({
+    queryKey: ['folder-validity', folderId], queryFn: () => folderValidity(folderId), enabled: !!folderId, retry: false,
+  })
 
   const query = useQuery({
     queryKey: folderId ? ['folder', folderId] : ['folders', 'root'],
@@ -100,7 +107,10 @@ export default function Browse() {
 
       <div className="page-head">
         <div>
-          <h1 className="break">{title} {folder && <FavouriteButton kind="folder" id={folder.id} />} <LegalHoldBadge item={folder} /></h1>
+          <h1 className="break">{title} {folder && <FavouriteButton kind="folder" id={folder.id} />} <LegalHoldBadge item={folder} />
+            {folder && validity.data?.effective && (
+              <> <span className="badge badge-primary" title="Documents in this folder are monitored for expiry"><Icon name="calendar" /> Validity monitoring</span></>
+            )}</h1>
           <p className="muted">
             {plural(subfolders.length, 'folder')} · {plural(documents.length, 'document')}
             {links.length > 0 && <> · {plural(links.length, 'shortcut')}</>}
@@ -149,6 +159,9 @@ export default function Browse() {
                         ? `Release the legal hold on “${folder.name}”? It can then be deleted or moved again.`
                         : `Place “${folder.name}” and everything in it under a legal hold? Nobody can delete, purge or move it until the hold is released.`}
                       success={folder.legal_hold ? 'Legal hold released.' : 'Legal hold placed.'} />
+                  )}
+                  {validity.data?.can_edit && (
+                    <button type="button" onClick={() => setValidityOpen(true)}><Icon name="calendar" /> Validity monitoring…</button>
                   )}
                   {has('admin') && <button type="button" onClick={() => setRetentionOpen(true)}><Icon name="history" /> Version retention</button>}
                   <Link to={`/folders/${folder.id}/history`}><Icon name="history" /> Folder history</Link>
@@ -216,6 +229,9 @@ export default function Browse() {
       </div>
 
       {retentionOpen && folder && <RetentionModal folderId={folder.id} onClose={() => setRetentionOpen(false)} />}
+      {validityOpen && folder && validity.data && (
+        <FolderValidityModal folder={folder} setting={validity.data} onClose={() => setValidityOpen(false)} />
+      )}
     </>
   )
 }

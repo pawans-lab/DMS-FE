@@ -172,8 +172,13 @@ src/
   `blocked`, `platform` or `device` to `/blocked`. Other errors appear in a toast, or inline in forms.
 - Downloads, ZIP exports and `.eml` files are plain links to `/api/v1/...`. Document previews are
   iframes pointing at `/api/v1/documents/<id>/preview` or `/render` (sandboxed). The email body is shown
-  in a sandboxed `srcdoc` iframe (`sandbox="allow-popups allow-popups-to-escape-sandbox"`,
-  `referrerpolicy="no-referrer"`) and is never inserted into the page.
+  in a sandboxed iframe loading `/api/v1/emails/<id>/render` (`sandbox="allow-popups allow-popups-to-escape-sandbox"`,
+  `referrerpolicy="no-referrer"`): a standalone page with its images as `data:` URLs and its own CSP, so the
+  app's CSP needs no `'unsafe-inline'`. The email HTML is never inserted into the page.
+- CSP: `style-src 'self'; script-src 'self'` (no inline styles or scripts). The same policy is in
+  `deploy/security-headers.conf`, `vite.config.js` (`securityHeaders`, also written into the built
+  `index.html` as a `<meta>` tag without `frame-ancestors`) and the `map` in `deploy/nginx-dms.conf`.
+  Use React `style={{…}}` props, never `style="…"` strings, `dangerouslySetInnerHTML` or `srcdoc`.
 - `/api/v1/me` does not return capabilities, the home folder or the app name. The app works them out
   from other endpoints. See `MIGRATION.md`, gap G1.
 

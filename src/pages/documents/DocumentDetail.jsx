@@ -16,6 +16,7 @@ import Loading, { QueryError } from '../../components/Loading'
 import MetadataFields, { TagsField } from '../../components/MetadataFields'
 import { useModals } from '../../components/modals/modalContext'
 import FileTypeBadge from '../../components/FileTypeBadge'
+import ValidityPanel from '../../components/validity/ValidityPanel'
 import { useFolders, useMetadataSchema, useTitle } from '../../hooks/data'
 import { checkTags, dt, filesize, typeLabel } from '../../lib/format'
 import { actionsOf, canDo } from '../../lib/perms'
@@ -270,6 +271,8 @@ export default function DocumentDetail() {
               <dt>SHA-256</dt><dd className="mono small break">{doc.sha256}</dd>
             </dl>
           </section>
+
+          {!doc.deleted && <ValidityPanel docId={doc.id} />}
 
           <section className="card" id="properties">
             <div className="card-head"><h2>Properties</h2></div>

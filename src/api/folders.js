@@ -4,8 +4,9 @@ export const listFolders = () => api('/folders').then((d) => d.folders)
 export const rootFolder = () => api('/folders/root')
 export const getFolder = (id) => api(`/folders/${id}`)
 export const folderHistory = (id) => api(`/folders/${id}/history`).then((d) => d.events)
-export const createFolder = (name, parentId) =>
-  api('/folders', { method: 'POST', body: { name, parent_id: parentId || '' } })
+/** `extra`: optional fields, e.g. { validity_monitoring: 'enabled' | 'disabled' } (omitted = follow the parent). */
+export const createFolder = (name, parentId, extra) =>
+  api('/folders', { method: 'POST', body: { name, parent_id: parentId || '', ...(extra || {}) } })
 export const renameFolder = (id, name) => api(`/folders/${id}`, { method: 'PATCH', body: { name } })
 export const moveFolder = (id, parentId) =>
   api(`/folders/${id}`, { method: 'PATCH', body: { parent_id: parentId || '' } })

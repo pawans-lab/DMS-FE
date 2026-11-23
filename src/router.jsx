@@ -13,8 +13,8 @@ import RecycleBin from './pages/RecycleBin'
 import Shared from './pages/Shared'
 import Versions from './pages/Versions'
 import {
-  Activity, AdminIndex, Compare, Devices, EmailDetail, EmailsIndex, GmailSettings, LegalHolds, Mailboxes, Metadata, MfaSetup, Ownership, Permissions, Profile,
-  RoleEdit, Roles, Search, Settings, UserEdit, Users,
+  Activity, AdminIndex, Compare, Devices, EmailDetail, EmailsIndex, GmailSettings, LegalHolds, Mailboxes, Metadata, MfaSetup, Notifications, Ownership, Permissions, Profile,
+  RoleEdit, Roles, Search, Settings, UserEdit, Users, Validity,
 } from './pages/lazy'
 import Login from './pages/auth/Login'
 import Message from './pages/auth/Message'
@@ -60,6 +60,9 @@ export const router = createBrowserRouter([
           // Audit log: contributors see only their own activity; administrators see everyone's.
           { path: '/activity', element: <Activity /> },
           { path: '/search', element: <Search /> },
+          // Document validity & expiry monitoring, and the notification centre (every signed-in user).
+          { path: '/validity', element: <Validity /> },
+          { path: '/notifications', element: <Notifications /> },
           { path: '/documents', element: <DocumentsIndex /> },
           { path: '/documents/:id', element: <DocumentDetail /> },
           { path: '/documents/:id/compare', element: <Compare /> },

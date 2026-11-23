@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { uuid } from '../../api/client'
-import { emailBody, emlUrl, emlWithImagesUrl, getEmail, importAttachment, inlineDataUrl } from '../../api/emails'
+import { emailRenderUrl, emlUrl, emlWithImagesUrl, getEmail, importAttachment } from '../../api/emails'
 import { useAuth } from '../../auth/authContext'
 import FolderSelect from '../../components/FolderSelect'
 import Icon from '../../components/Icon'
@@ -15,36 +15,11 @@ import { TYPE_LABELS, dt, extensionOf, filesize, initial } from '../../lib/forma
 import { toast } from '../../lib/toast'
 import EmailShares from './EmailShares'
 
-// The same policy as routes/emails.py BODY_CSP, minus what a srcdoc frame cannot use ('self').
-const BODY_CSP = "default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:; base-uri 'none'; form-action 'none'"
-
 const STATE_NOTES = {
   inbox: 'This message is currently in the Gmail Inbox. The archived copy is retained here.',
   trashed: 'This message has been moved to Trash in Gmail. The archived copy is retained here.',
   spam: 'This message has been marked as spam in Gmail. The archived copy is retained here.',
   deleted: 'This message has been permanently deleted from Gmail. The archived copy is retained here.',
-}
-
-/**
- * The message HTML from GET /emails/<id>/body (JSON, MIGRATION.md G11) as an iframe srcdoc document.
- * Inline images become data: URLs and a CSP <meta> blocks scripts and remote content. The HTML is never
- * put into this page's DOM.
- */
-async function messageDocument(id) {
-  let html = await emailBody(id)
-  // render_preview_html points embedded images at /inline/<n> and stored copies of linked images
-  // (newsletter logos etc.) at /images/<n>, both paths on this server.
-  const pattern = new RegExp(`/api/v1/emails/${id}/(inline|images)/(\\d+)(?!\\d)`, 'g')
-  const refs = [...new Set([...html.matchAll(pattern)].map((m) => m[0]))]
-  const found = {}
-  await Promise.all(refs.map(async (ref) => {
-    const [, kind, part] = ref.match(/\/(inline|images)\/(\d+)$/)
-    try {
-      found[ref] = await inlineDataUrl(id, part, kind)
-    } catch { /* leave the image broken */ }
-  }))
-  html = html.replace(pattern, (ref) => found[ref] || ref)
-  return `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${BODY_CSP}">${html}`
 }
 
 function ImportModal({ email, attachment, onClose }) {
@@ -114,7 +89,6 @@ export default function EmailDetail() {
   const { homeFolderId } = useAuth()
   const [importing, setImporting] = useState(null)
   const query = useQuery({ queryKey: ['email', emailId], queryFn: () => getEmail(emailId) })
-  const body = useQuery({ queryKey: ['email-body', emailId], queryFn: () => messageDocument(emailId), retry: false })
   const email = query.data
   useTitle(email ? email.subject || '(no subject)' : 'Email')
 
@@ -136,7 +110,7 @@ export default function EmailDetail() {
   const infected = email.scan_status === 'infected'
   const importable = (name) => !!TYPE_LABELS[extensionOf(name)]
   const fileType = (a) => TYPE_LABELS[extensionOf(a.filename)] || (extensionOf(a.filename) || a.content_type.split('/').pop()).toUpperCase()
-  const fileMissing = body.isError && body.error?.code === 'not_found'
+  const fileMissing = !!email.file_missing
   // `access` lists what the signed-in user may do (Permissions Matrix 5). Older responses lack it: owner only.
   const access = email.access || ['view', 'download', 'share']
   const canDownload = access.includes('download')
@@ -199,11 +173,12 @@ export default function EmailDetail() {
               ))}
             </div>
           )}
-          {body.data && (
-            <iframe className="mail-frame" srcDoc={body.data} sandbox="allow-popups allow-popups-to-escape-sandbox"
+          {!fileMissing && (
+            // A URL, not srcdoc: the frame then gets the server's own CSP for email bodies instead of
+            // inheriting this page's, which forbids inline styles.
+            <iframe className="mail-frame" src={emailRenderUrl(email.id)} sandbox="allow-popups allow-popups-to-escape-sandbox"
               title="Message body" referrerPolicy="no-referrer" />
           )}
-          {body.isPending && <p className="muted pad">Loading message…</p>}
           <p className="small muted pad">For your security, scripts and remote content in emails are blocked in this preview; images the email links to are shown from copies stored in JMBVault. Attachments are listed with their details only. The original message is preserved unmodified in the .eml file.</p>
         </section>
 

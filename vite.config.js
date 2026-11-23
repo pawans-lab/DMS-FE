@@ -6,13 +6,36 @@ import { defineConfig, loadEnv } from 'vite'
 // script-src 'self' would block.
 const securityHeaders = {
   'Content-Security-Policy':
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; " +
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; " +
     "font-src 'self' data:; media-src 'self'; connect-src 'self'; frame-src 'self'; object-src 'none'; " +
     "base-uri 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'self'",
   'X-Frame-Options': 'SAMEORIGIN',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'same-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+}
+
+/**
+ * Puts the CSP into the built index.html as a <meta http-equiv> tag, so the page enforces it even when
+ * the web server does not send the header. Build only: `npm run dev` needs inline scripts for hot reload.
+ * frame-ancestors is ignored in a <meta> CSP, so it is left out (X-Frame-Options / the server header
+ * cover framing). An API on another origin (VITE_API_BASE) is added to connect-src and frame-src.
+ */
+function cspMetaTag(apiBase) {
+  let apiOrigin = ''
+  try { apiOrigin = apiBase ? new URL(apiBase).origin : '' } catch { apiOrigin = '' }
+  const policy = securityHeaders['Content-Security-Policy']
+    .split(';').map((d) => d.trim())
+    .filter((d) => d && !d.startsWith('frame-ancestors'))
+    .map((d) => (apiOrigin && /^(connect|frame)-src /.test(d) ? `${d} ${apiOrigin}` : d))
+    .join('; ')
+  return {
+    name: 'dms-csp-meta',
+    apply: 'build',
+    transformIndexHtml: () => [
+      { tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: policy }, injectTo: 'head-prepend' },
+    ],
+  }
 }
 
 // https://vite.dev/config/
@@ -24,7 +47,7 @@ export default defineConfig(({ mode }) => {
   // browser's host (this dev server), so SSO and Gmail callbacks come back through the proxy.
   const proxy = { target, changeOrigin: false }
   return {
-    plugins: [react()],
+    plugins: [react(), cspMetaTag(env.VITE_API_BASE)],
     server: {
       port: 5173,
       proxy: {

@@ -5,6 +5,7 @@ import Icon from '../components/Icon'
 import Loading from '../components/Loading'
 import { useModals } from '../components/modals/modalContext'
 import SearchBox from '../components/SearchBox'
+import NotificationBell from '../components/validity/NotificationBell'
 import { initial } from '../lib/format'
 
 /** Closes open `details.menu` dropdowns on an outside click or a menu item click (app.js). */
@@ -52,6 +53,7 @@ export default function AppLayout() {
           {item('/favourites', 'star', 'Favourites', pathname === '/favourites')}
           {item('/recent', 'clock', 'Recent', pathname === '/recent')}
           {item('/recycle-bin', 'trash', 'Recycle Bin', pathname === '/recycle-bin')}
+          {item('/validity', 'calendar', 'Document Validity', pathname === '/validity')}
           <div className="nav-section">Find</div>
           {item('/search', 'search', 'Search', pathname.startsWith('/search'))}
           {item('/documents', 'file', 'All Documents', docPage)}
@@ -87,6 +89,7 @@ export default function AppLayout() {
           <button type="button" className="icon-btn menu-toggle" aria-label="Menu" aria-expanded={sidebarOpen}
             aria-controls="sidebar" onClick={() => setOpenOn(sidebarOpen ? null : pathname)}><Icon name="menu" /></button>
           <SearchBox />
+          <div className="topbar-actions"><NotificationBell /></div>
         </header>
         <main className="content">
           <Suspense fallback={<Loading />}><Outlet /></Suspense>
